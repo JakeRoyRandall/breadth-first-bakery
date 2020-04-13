@@ -1,6 +1,6 @@
-# Breadth-First Bakery — 02-feature
+# Breadth-First Bakery — 03-feature
 
-Created September 2026 retrospectively; fictional 2020-inspired project, not a historical work record. Build with `clang -std=c11 -Wall -Wextra -pedantic game.c -o bakery` and run `./bakery [seed]`. Even and odd seeds select two hand-authored delivery layouts; `h` runs BFS on the active layout. The root test command compiles `tests/feature_test.c` against this snapshot.
+Created September 2026 retrospectively; fictional 2020-inspired project, not a historical work record. Build with `clang -std=c11 -Wall -Wextra -pedantic game.c -o bakery` and run `./bakery [seed]`. Use `p` to save to `bakery.save`, `l` to load it, and `h` for the BFS distance hint. The root test command compiles `tests/save_test.c` against this snapshot.
 
 Run the compiled checks: `clang -std=c11 -Wall -Wextra -pedantic test_game.c -o /tmp/bakery-test && /tmp/bakery-test`. Tests use temporary named files in /tmp.
 

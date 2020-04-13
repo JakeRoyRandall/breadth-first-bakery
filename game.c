@@ -7,7 +7,7 @@
 #define H 9
 #define W 15
 typedef struct { int row, col; } Point;
-typedef struct { char map[H][W + 1]; Point player, bakery; int delivered; } Game;
+typedef struct { char map[H][W + 2]; Point player, bakery; int delivered; } Game;
 
 static const char *core_map[H] = {
     "###############", "#@           B#", "# ### ### ### #",
@@ -61,6 +61,32 @@ void draw(const Game *g) {
     for (int r = 0; r < H; r++) { for (int c = 0; c < W; c++) { char tile = g->map[r][c] == '@' ? ' ' : g->map[r][c]; putchar((r == g->player.row && c == g->player.col) ? '@' : tile); } putchar('\n'); }
 }
 
+int save_game(const Game *g, const char *path) {
+    FILE *file = fopen(path, "w"); if (!file) return 0;
+    int ok = fprintf(file, "%d %d %d %d %d\n", g->player.row, g->player.col, g->bakery.row, g->bakery.col, g->delivered) >= 0;
+    for (int r = 0; r < H && ok; r++) ok = fprintf(file, "%.*s\n", W, g->map[r]) >= 0;
+    if (fclose(file) != 0) ok = 0;
+    return ok;
+}
+
+int load_game(Game *g, const char *path) {
+    FILE *file = fopen(path, "r"); if (!file) return 0;
+    Game candidate; memset(&candidate, 0, sizeof(candidate));
+    if (fscanf(file, "%d %d %d %d %d", &candidate.player.row, &candidate.player.col, &candidate.bakery.row, &candidate.bakery.col, &candidate.delivered) != 5) { fclose(file); return 0; }
+    int ch; do { ch = fgetc(file); } while (ch != '\n' && ch != EOF);
+    int bakery_count = 0;
+    for (int r = 0; r < H; r++) {
+        if (!fgets(candidate.map[r], W + 2, file) || strlen(candidate.map[r]) != W + 1 || candidate.map[r][W] != '\n') { fclose(file); return 0; }
+        candidate.map[r][W] = '\0';
+        for (int c = 0; c < W; c++) { char tile = candidate.map[r][c]; if (tile != '#' && tile != ' ' && tile != 'B') { fclose(file); return 0; } if (tile == 'B') bakery_count++; }
+    }
+    fclose(file);
+    if (bakery_count != 1 || !can_step(&candidate, candidate.player) || !can_step(&candidate, candidate.bakery) || candidate.map[candidate.bakery.row][candidate.bakery.col] != 'B' || shortest_path(&candidate) < 0) return 0;
+    if (candidate.delivered != 0 && candidate.delivered != 1) return 0;
+    if (candidate.delivered != (candidate.player.row == candidate.bakery.row && candidate.player.col == candidate.bakery.col)) return 0;
+    *g = candidate; return 1;
+}
+
 #ifndef BAKERY_TEST
 int main(int argc, char **argv) {
     Game game; char command[32]; unsigned seed = 7;
@@ -68,12 +94,14 @@ int main(int argc, char **argv) {
     if (argc > 1) { char *end; unsigned long parsed; errno = 0; parsed = strtoul(argv[1], &end, 10); if (errno || end == argv[1] || *end != '\0' || parsed > 0xffffffffUL) { fprintf(stderr, "Seed must be a whole number.\n"); return 2; } seed = (unsigned)parsed; }
     game_init_seed(&game, seed);
     puts("BREADTH-FIRST BAKERY — 2020 SOURDOUGH DELIVERY");
-    printf("Seed %u. You are @. Reach B with w/a/s/d. Type h for a path hint, r to reset, q to quit.\n", seed);
+    printf("Seed %u. Reach B with w/a/s/d. h=hint, p=put in pantry, l=load pantry, r=reset, q=quit.\n", seed);
     while (!game.delivered) {
         draw(&game); printf("Command [w/a/s/d, h, r, q]: ");
         if (!fgets(command, sizeof(command), stdin)) break;
         if (command[0] == 'q') break;
         if (command[0] == 'h') { int path = shortest_path(&game); printf(path >= 0 ? "Fresh bread is %d steps away.\n" : "The bakery is unreachable.\n", path); continue; }
+        if (command[0] == 'p') { puts(save_game(&game, "bakery.save") ? "Pantry saved." : "The pantry door is jammed."); continue; }
+        if (command[0] == 'l') { puts(load_game(&game, "bakery.save") ? "Pantry loaded." : "No usable pantry save found."); continue; }
         if (command[0] == 'r') { game_init_seed(&game, seed); puts("The dough remembers nothing.\n"); continue; }
         if (!move_player(&game, command[0])) puts("That aisle is blocked. The yeast says no.\n");
     }
