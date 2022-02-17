@@ -98,6 +98,22 @@ int shortest_path(const Game *g) {
     return -1;
 }
 
+char next_direction(const Game *g) {
+    if (g->delivered || (g->player.row == g->bakery.row && g->player.col == g->bakery.col)) return '!';
+    int distance[H][W], head = 0, tail = 0; Point queue[H * W];
+    for (int r = 0; r < H; r++) for (int c = 0; c < W; c++) distance[r][c] = -1;
+    distance[g->bakery.row][g->bakery.col] = 0; queue[tail++] = g->bakery;
+    while (head < tail) {
+        Point p = queue[head++];
+        Point neighbors[4] = {{p.row-1,p.col},{p.row,p.col+1},{p.row+1,p.col},{p.row,p.col-1}};
+        for (int i = 0; i < 4; i++) { Point n = neighbors[i]; if (can_step(g,n) && distance[n.row][n.col] < 0) { distance[n.row][n.col] = distance[p.row][p.col] + 1; queue[tail++] = n; } }
+    }
+    Point neighbors[4] = {{g->player.row-1,g->player.col},{g->player.row,g->player.col+1},{g->player.row+1,g->player.col},{g->player.row,g->player.col-1}};
+    const char directions[4] = {'w', 'd', 's', 'a'};
+    for (int i = 0; i < 4; i++) if (can_step(g, neighbors[i]) && distance[neighbors[i].row][neighbors[i].col] >= 0 && distance[neighbors[i].row][neighbors[i].col] < distance[g->player.row][g->player.col]) return directions[i];
+    return '?';
+}
+
 void draw(const Game *g) {
     for (int r = 0; r < H; r++) { for (int c = 0; c < W; c++) { char tile = g->map[r][c] == '@' ? ' ' : g->map[r][c]; putchar((r == g->player.row && c == g->player.col) ? '@' : tile); } putchar('\n'); }
 }
@@ -167,12 +183,13 @@ int main(int argc, char **argv) {
     if (argc > 1) { char *end; unsigned long parsed; errno = 0; parsed = strtoul(argv[1], &end, 10); if (errno || end == argv[1] || *end != '\0' || parsed > 0xffffffffUL) { fprintf(stderr, "Seed must be a whole number.\n"); return 2; } seed = (unsigned)parsed; }
     game_init_seed(&game, seed);
     puts("BREADTH-FIRST BAKERY — 2020 SOURDOUGH DELIVERY");
-    printf("Seed %u. Reach B with w/a/s/d. h=hint, u=undo, p=put in pantry, l=load pantry, r=restart, q=quit.\n", seed);
+    printf("Seed %u. Reach B with w/a/s/d. h=distance hint, n=next direction, u=undo, p=put in pantry, l=load pantry, r=restart, q=quit.\n", seed);
     while (!game.delivered) {
-        draw(&game); printf("Command [w/a/s/d, h, u, r, q]: ");
+        draw(&game); printf("Command [w/a/s/d, h, n, u, r, q]: ");
         if (!fgets(command, sizeof(command), stdin)) break;
         if (command[0] == 'q') break;
         if (command[0] == 'h') { int path = shortest_path(&game); printf(path >= 0 ? "Fresh bread is %d steps away.\n" : "The bakery is unreachable.\n", path); continue; }
+        if (command[0] == 'n') { char direction = next_direction(&game); if (direction == '!') puts("The delivery is already complete."); else if (direction == '?') puts("The bakery is unreachable."); else printf("Next direction: %c.\n", direction); continue; }
         if (command[0] == 'u') { puts(undo_move(&game) ? "Undid the last move." : "Nothing to undo."); continue; }
         if (command[0] == 'p') { puts(save_game(&game, "bakery.save") ? "Pantry saved." : "The pantry door is jammed."); continue; }
         if (command[0] == 'l') { puts(load_game(&game, "bakery.save") ? "Pantry loaded." : "No usable pantry save found."); continue; }
