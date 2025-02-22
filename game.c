@@ -7,7 +7,8 @@
 #define H 9
 #define W 15
 typedef struct { int row, col; } Point;
-typedef struct { char map[H][W + 2]; Point player, bakery; int delivered; } Game;
+typedef struct { char map[H][W + 2]; Point player, bakery; int delivered; } Snapshot;
+typedef struct { char map[H][W + 2]; Point player, bakery; int delivered; Snapshot undo[20]; int undo_count; } Game;
 
 static const char *core_map[H] = {
     "###############", "#@           B#", "# ### ### ### #",
@@ -33,14 +34,48 @@ void game_init(Game *g) { game_init_seed(g, 7); }
 
 int can_step(const Game *g, Point p) { return p.row > 0 && p.row < H - 1 && p.col > 0 && p.col < W - 1 && g->map[p.row][p.col] != '#'; }
 
+static Snapshot snapshot_from_game(const Game *g) {
+    Snapshot snapshot;
+    memcpy(snapshot.map, g->map, sizeof(snapshot.map));
+    snapshot.player = g->player;
+    snapshot.bakery = g->bakery;
+    snapshot.delivered = g->delivered;
+    return snapshot;
+}
+
+static void restore_snapshot(Game *g, const Snapshot *snapshot) {
+    memcpy(g->map, snapshot->map, sizeof(g->map));
+    g->player = snapshot->player;
+    g->bakery = snapshot->bakery;
+    g->delivered = snapshot->delivered;
+}
+
+static void remember(Game *g, Snapshot snapshot) {
+    if (g->undo_count == 20) {
+        memmove(&g->undo[0], &g->undo[1], 19 * sizeof(g->undo[0]));
+        g->undo_count = 19;
+    }
+    g->undo[g->undo_count++] = snapshot;
+}
+
 int move_player(Game *g, char command) {
     Point next = g->player;
     if (command == 'w') next.row--; else if (command == 's') next.row++;
     else if (command == 'a') next.col--; else if (command == 'd') next.col++;
     else return 0;
     if (!can_step(g, next)) return 0;
+    Snapshot before = snapshot_from_game(g);
     g->player = next;
     if (next.row == g->bakery.row && next.col == g->bakery.col) g->delivered = 1;
+    remember(g, before);
+    return 1;
+}
+
+int undo_move(Game *g) {
+    if (g->undo_count == 0) return 0;
+    g->undo_count--;
+    Snapshot previous = g->undo[g->undo_count];
+    restore_snapshot(g, &previous);
     return 1;
 }
 
@@ -94,12 +129,13 @@ int main(int argc, char **argv) {
     if (argc > 1) { char *end; unsigned long parsed; errno = 0; parsed = strtoul(argv[1], &end, 10); if (errno || end == argv[1] || *end != '\0' || parsed > 0xffffffffUL) { fprintf(stderr, "Seed must be a whole number.\n"); return 2; } seed = (unsigned)parsed; }
     game_init_seed(&game, seed);
     puts("BREADTH-FIRST BAKERY — 2020 SOURDOUGH DELIVERY");
-    printf("Seed %u. Reach B with w/a/s/d. h=hint, p=put in pantry, l=load pantry, r=reset, q=quit.\n", seed);
+    printf("Seed %u. Reach B with w/a/s/d. h=hint, u=undo, p=put in pantry, l=load pantry, r=reset, q=quit.\n", seed);
     while (!game.delivered) {
-        draw(&game); printf("Command [w/a/s/d, h, r, q]: ");
+        draw(&game); printf("Command [w/a/s/d, h, u, r, q]: ");
         if (!fgets(command, sizeof(command), stdin)) break;
         if (command[0] == 'q') break;
         if (command[0] == 'h') { int path = shortest_path(&game); printf(path >= 0 ? "Fresh bread is %d steps away.\n" : "The bakery is unreachable.\n", path); continue; }
+        if (command[0] == 'u') { puts(undo_move(&game) ? "Undid the last move." : "Nothing to undo."); continue; }
         if (command[0] == 'p') { puts(save_game(&game, "bakery.save") ? "Pantry saved." : "The pantry door is jammed."); continue; }
         if (command[0] == 'l') { puts(load_game(&game, "bakery.save") ? "Pantry loaded." : "No usable pantry save found."); continue; }
         if (command[0] == 'r') { game_init_seed(&game, seed); puts("The dough remembers nothing.\n"); continue; }

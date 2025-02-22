@@ -1,9 +1,12 @@
-# Breadth-First Bakery — 03-feature
+# Breadth-First Bakery
 
-Created September 2026 retrospectively; fictional 2020-inspired project, not a historical work record. Build with `clang -std=c11 -Wall -Wextra -pedantic game.c -o bakery` and run `./bakery [seed]`. Use `p` to save to `bakery.save`, `l` to load it, and `h` for the BFS distance hint. The root test command compiles `tests/save_test.c` against this snapshot.
+A small terminal sourdough delivery maze set in a fictional 2020. Created September 2026 retrospectively; this is a fictional 2020-inspired project, not a historical work record. No medical claims or advice are involved.
 
-Run the compiled checks: `clang -std=c11 -Wall -Wextra -pedantic test_game.c -o /tmp/bakery-test && /tmp/bakery-test`. Tests use temporary named files in /tmp.
+Build and run the final snapshot:
 
-Git author dates are deliberately assigned for contribution-calendar artwork, not claims of historical work. Committer timestamps record actual creation in September 2026.
+```sh
+clang -std=c11 -Wall -Wextra -pedantic game.c -o bakery
+./bakery 8
+```
 
-Seeds select one of two hand-authored layouts by parity; this is not procedural maze generation. `h` reports the shortest remaining distance, not the route.
+Use `w/a/s/d` to move, `h` for a shortest-path hint, `u` to undo a successful move, `p` to save, `l` to load, `r` to reset, and `q` to quit. Undo keeps up to 20 prior positions and restores the maze, player, bakery, and delivery state. Hints and invalid or informational commands do not add history; reset and successful load clear it. Run the compiled checks from the project root with `clang -std=c11 -Wall -Wextra -pedantic core_test.c -o /tmp/bakery-core-test && /tmp/bakery-core-test`, and similarly for `feature_test.c`, `save_test.c`, and `undo_test.c`.
