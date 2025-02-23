@@ -8,7 +8,7 @@ int main(void) {
     game_init_seed(&g, 7);
     assert(move_player(&g, 'd') == 1);
     assert(g.player.col == 2 && undo_move(&g) == 1);
-    assert(g.player.row == 1 && g.player.col == 1);
+    assert(g.player.row == 1 && g.player.col == 1 && g.moves == 0);
     assert(undo_move(&g) == 0);
 
     int row = g.player.row;
@@ -19,7 +19,7 @@ int main(void) {
     game_init_seed(&g, 7);
     for (int i = 0; i < 12; i++) assert(move_player(&g, 'd') == 1);
     assert(g.delivered == 1 && g.player.col == g.bakery.col);
-    assert(undo_move(&g) == 1 && g.delivered == 0 && g.player.col == g.bakery.col - 1);
+    assert(undo_move(&g) == 1 && g.delivered == 0 && g.player.col == g.bakery.col - 1 && g.moves == 11);
 
     game_init_seed(&g, 7);
     for (int i = 0; i < 21; i++) {
@@ -40,6 +40,9 @@ int main(void) {
     assert(move_player(&g, 'd') == 1);
     game_init_seed(&g, 7);
     assert(undo_move(&g) == 0);
+    assert(g.player.row == 1 && g.player.col == 1 && g.delivered == 0);
+    g.moves = MOVE_LIMIT;
+    assert(move_player(&g, 'd') == 0 && g.player.col == 1 && g.moves == MOVE_LIMIT && g.undo_count == 0);
     puts("undo tests passed: reversal, invalid move, delivery state, cap, load/reset clearing");
     return 0;
 }
