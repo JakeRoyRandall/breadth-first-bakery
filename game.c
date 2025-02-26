@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h>
+#include <unistd.h>
 
 #define H 9
 #define W 15
@@ -119,10 +120,18 @@ void draw(const Game *g) {
 }
 
 int save_game(const Game *g, const char *path) {
-    FILE *file = fopen(path, "w"); if (!file) return 0;
+    size_t path_length = strlen(path);
+    char *temporary_path = malloc(path_length + 32);
+    if (temporary_path == NULL) return 0;
+    if (snprintf(temporary_path, path_length + 32, "%s.tmp-%ld", path, (long)getpid()) < 0) { free(temporary_path); return 0; }
+    FILE *file = fopen(temporary_path, "wx");
+    if (!file) { free(temporary_path); return 0; }
     int ok = fprintf(file, "%d %d %d %d %d %u\n", g->player.row, g->player.col, g->bakery.row, g->bakery.col, g->delivered, g->moves) >= 0;
     for (int r = 0; r < H && ok; r++) ok = fprintf(file, "%.*s\n", W, g->map[r]) >= 0;
     if (fclose(file) != 0) ok = 0;
+    if (ok && rename(temporary_path, path) != 0) ok = 0;
+    if (!ok) remove(temporary_path);
+    free(temporary_path);
     return ok;
 }
 

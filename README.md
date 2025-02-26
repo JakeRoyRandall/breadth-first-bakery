@@ -14,3 +14,5 @@ Use `w/a/s/d` to move, `h` for a shortest-path hint, `u` to undo a successful mo
 Successful moves are counted, undo restores the prior count, and restart clears it. Current saves add the move count as a sixth header integer; legacy five-field saves load with zero moves. The count is limited to 1,000,000; further moves leave the game unchanged. Malformed headers fail without replacing the current game.
 
 The `n` command suggests the next key along a shortest route. Ties prefer north, east, south, then west. It changes no state, counter, or undo history; `h` still reports remaining distance.
+
+Saves use an exclusively created temporary sibling, then rename only after all writes and close succeed. Failed saves preserve the existing target and clean up temporary output. This implementation targets POSIX systems such as macOS and Linux.

@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #define BAKERY_TEST
 #include "game.c"
 int main(void) {
@@ -9,6 +10,13 @@ int main(void) {
     assert(after.player.row == before.player.row && after.player.col == before.player.col);
     assert(after.moves == before.moves);
     assert(shortest_path(&after) == shortest_path(&before));
+    assert(move_player(&before, 'd') == 1);
+    assert(save_game(&before, "/tmp/bakery-save-test.txt"));
+    assert(load_game(&after, "/tmp/bakery-save-test.txt") && after.moves == 2);
+    assert(mkdir("/tmp/bakery-save-target", 0700) == 0);
+    assert(!save_game(&before, "/tmp/bakery-save-target"));
+    assert(access("/tmp/bakery-save-target", F_OK) == 0);
+    rmdir("/tmp/bakery-save-target");
     FILE *legacy = fopen("/tmp/bakery-legacy-save.txt", "w"); assert(legacy);
     fprintf(legacy, "%d %d %d %d %d\n", before.player.row, before.player.col, before.bakery.row, before.bakery.col, before.delivered);
     for (int r = 0; r < H; r++) fprintf(legacy, "%.*s\n", W, before.map[r]);
